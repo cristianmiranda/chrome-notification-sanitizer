@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="icons/logo.png" alt="Notification Sanitizer" width="200">
+</p>
+
 # Notification Sanitizer
 
 A Chrome extension that sanitizes web notifications by stripping HTML tags before they reach the system notification daemon.
