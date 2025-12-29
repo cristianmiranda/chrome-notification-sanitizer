@@ -15,7 +15,21 @@ This extension intercepts the Web Notifications API and:
 
 ## Installation
 
-### From Source (Developer Mode)
+### From GitHub Releases
+
+1. Download the latest `.zip` from [Releases](https://github.com/cristianmiranda/chrome-notification-sanitizer/releases)
+
+2. Extract the zip to a permanent location (e.g., `~/.local/share/chrome-extensions/chrome-notification-sanitizer`)
+
+3. Open Chrome and navigate to `chrome://extensions/`
+
+4. Enable **Developer mode** (toggle in top-right corner)
+
+5. Click **Load unpacked**
+
+6. Select the extracted folder
+
+### From Source
 
 1. Clone this repository:
    ```bash
