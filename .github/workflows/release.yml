@@ -2,31 +2,46 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*.*.*'
+    branches:
+      - master
+    paths-ignore:
+      - 'README.md'
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    # Skip if commit message contains [skip ci] (prevents infinite loop)
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
     permissions:
       contents: write
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get version from tag
+      - name: Bump patch version
         id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Validate manifest version
         run: |
-          MANIFEST_VERSION=$(jq -r '.version' manifest.json)
-          TAG_VERSION=${{ steps.version.outputs.VERSION }}
-          if [ "$MANIFEST_VERSION" != "$TAG_VERSION" ]; then
-            echo "Error: manifest.json version ($MANIFEST_VERSION) does not match tag version ($TAG_VERSION)"
-            exit 1
-          fi
+          CURRENT=$(jq -r '.version' manifest.json)
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          PATCH=$((PATCH + 1))
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          jq --arg v "$NEW_VERSION" '.version = $v' manifest.json > manifest.json.tmp
+          mv manifest.json.tmp manifest.json
+          echo "VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "Bumped version: $CURRENT -> $NEW_VERSION"
+
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add manifest.json
+          git commit -m "Bump version to ${{ steps.version.outputs.VERSION }} [skip ci]"
+          git tag "v${{ steps.version.outputs.VERSION }}"
+          git push
+          git push origin "v${{ steps.version.outputs.VERSION }}"
 
       - name: Package extension
         run: |
@@ -41,5 +56,6 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ steps.version.outputs.VERSION }}
           files: dist/chrome-notification-sanitizer-${{ steps.version.outputs.VERSION }}.zip
           generate_release_notes: true
