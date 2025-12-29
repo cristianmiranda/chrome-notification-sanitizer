@@ -19,7 +19,7 @@ This extension intercepts the Web Notifications API and:
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/yourusername/notification-sanitizer.git
+   git clone https://github.com/cristianmiranda/chrome-notification-sanitizer.git
    ```
 
 2. Open Chrome and navigate to `chrome://extensions/`
@@ -28,7 +28,7 @@ This extension intercepts the Web Notifications API and:
 
 4. Click **Load unpacked**
 
-5. Select the `notification-sanitizer` directory
+5. Select the `chrome-notification-sanitizer` directory
 
 ## How It Works
 

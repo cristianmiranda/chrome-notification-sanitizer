@@ -16,21 +16,37 @@
   const originalRequestPermission = OriginalNotification.requestPermission?.bind(OriginalNotification);
 
   /**
-   * Strip HTML tags from a string
+   * Sanitize notification body by removing link elements and cleaning up
    */
-  function stripHtml(str) {
+  function sanitizeBody(str) {
     if (!str) return str;
-    // Remove HTML tags
-    let clean = str.replace(/<[^>]*>/g, '');
+    // Remove entire <a> tags including their content (the URL text we don't want)
+    let clean = str.replace(/<a[^>]*>[^<]*<\/a>/gi, '');
+    // Remove any other HTML tags
+    clean = clean.replace(/<[^>]*>/g, '');
     // Decode common HTML entities
     clean = clean.replace(/&amp;/g, '&')
                  .replace(/&lt;/g, '<')
                  .replace(/&gt;/g, '>')
                  .replace(/&quot;/g, '"')
                  .replace(/&#39;/g, "'");
-    // Trim leading/trailing whitespace and collapse multiple newlines
-    clean = clean.trim().replace(/\n{3,}/g, '\n\n');
+    // Remove leading newlines/whitespace and collapse multiple newlines
+    clean = clean.replace(/^\s*\n+/, '').trim().replace(/\n{3,}/g, '\n\n');
     return clean;
+  }
+
+  /**
+   * Strip HTML tags from a string (for title - keep text content)
+   */
+  function stripHtml(str) {
+    if (!str) return str;
+    let clean = str.replace(/<[^>]*>/g, '');
+    clean = clean.replace(/&amp;/g, '&')
+                 .replace(/&lt;/g, '<')
+                 .replace(/&gt;/g, '>')
+                 .replace(/&quot;/g, '"')
+                 .replace(/&#39;/g, "'");
+    return clean.trim();
   }
 
   /**
@@ -39,7 +55,7 @@
   function SanitizedNotification(title, options = {}) {
     // Sanitize the title and body
     const sanitizedTitle = stripHtml(title);
-    const sanitizedBody = stripHtml(options.body);
+    const sanitizedBody = sanitizeBody(options.body);
 
     // Create sanitized options
     const sanitizedOptions = {
@@ -59,23 +75,28 @@
       }
     }, '*');
 
-    // Create the original notification with sanitized content
-    // This ensures the page's notification handlers still work
-    const notification = new OriginalNotification(sanitizedTitle, sanitizedOptions);
-
-    // Proxy click events to also notify our extension
-    const originalOnClick = notification.onclick;
-    notification.onclick = function(event) {
-      window.postMessage({
-        type: 'NOTIFICATION_SANITIZER_CLICK',
-        payload: { url: window.location.href }
-      }, '*');
-      if (originalOnClick) {
-        originalOnClick.call(this, event);
+    // Return a fake notification object that mimics the real API
+    // but doesn't actually create a system notification (we handle that via chrome.notifications)
+    const fakeNotification = {
+      title: sanitizedTitle,
+      body: sanitizedBody,
+      icon: options.icon,
+      tag: options.tag,
+      onclick: null,
+      onclose: null,
+      onerror: null,
+      onshow: null,
+      close: function() {
+        if (this.onclose) this.onclose();
       }
     };
 
-    return notification;
+    // Simulate the 'show' event
+    setTimeout(() => {
+      if (fakeNotification.onshow) fakeNotification.onshow();
+    }, 0);
+
+    return fakeNotification;
   }
 
   // Copy static properties and methods
