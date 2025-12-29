@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Notification Sanitizer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Strips HTML tags from web notifications for cleaner display in system notification daemons like dunst",
   "permissions": [
     "notifications",
@@ -15,16 +15,24 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_start",
       "all_frames": true
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["injected.js"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "injected.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ],
   "icons": {
