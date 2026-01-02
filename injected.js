@@ -15,12 +15,17 @@
    * Get the site's favicon URL
    */
   function getFaviconUrl() {
-    // Try various favicon link tags
+    // Try various favicon link tags in order of preference (larger icons first)
     const selectors = [
-      'link[rel="icon"]',
-      'link[rel="shortcut icon"]',
       'link[rel="apple-touch-icon"]',
-      'link[rel="apple-touch-icon-precomposed"]'
+      'link[rel="apple-touch-icon-precomposed"]',
+      'link[rel="icon"][sizes="192x192"]',
+      'link[rel="icon"][sizes="128x128"]',
+      'link[rel="icon"][sizes="96x96"]',
+      'link[rel="icon"][sizes="64x64"]',
+      'link[rel="icon"][sizes="32x32"]',
+      'link[rel="icon"]',
+      'link[rel="shortcut icon"]'
     ];
 
     for (const selector of selectors) {
@@ -32,49 +37,6 @@
 
     // Fall back to default favicon location
     return new URL('/favicon.ico', window.location.origin).href;
-  }
-
-  /**
-   * Convert an image URL to a base64 data URL
-   * This is necessary because chrome.notifications API cannot access
-   * blob: URLs, authenticated URLs, or CORS-restricted URLs
-   */
-  async function iconToDataUrl(iconUrl) {
-    // If no icon provided, try to use the site's favicon
-    if (!iconUrl) {
-      iconUrl = getFaviconUrl();
-      console.debug('[Notification Sanitizer] No icon provided, using favicon:', iconUrl);
-    }
-
-    // If it's already a data URL, return as-is
-    if (iconUrl.startsWith('data:')) {
-      return iconUrl;
-    }
-
-    try {
-      // Fetch the image (works for blob:, authenticated, and regular URLs)
-      const response = await fetch(iconUrl);
-      if (!response.ok) {
-        console.debug('[Notification Sanitizer] Failed to fetch icon:', response.status);
-        return null;
-      }
-
-      const blob = await response.blob();
-
-      // Convert blob to data URL using FileReader
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.onerror = () => {
-          console.debug('[Notification Sanitizer] Failed to read icon blob');
-          resolve(null);
-        };
-        reader.readAsDataURL(blob);
-      });
-    } catch (err) {
-      console.debug('[Notification Sanitizer] Error converting icon:', err);
-      return null;
-    }
   }
 
   // Store original static properties
@@ -145,25 +107,25 @@
       }
     };
 
-    // Convert icon to data URL asynchronously, then send notification
-    // This ensures chrome.notifications can display the icon properly
-    (async () => {
-      const iconDataUrl = await iconToDataUrl(options.icon);
+    // Get icon URL - use provided icon or fall back to favicon
+    // The actual fetching happens in background.js which can bypass CORS
+    const iconUrl = options.icon || getFaviconUrl();
 
-      window.postMessage({
-        type: 'NOTIFICATION_SANITIZER_CREATE',
-        payload: {
-          title: sanitizedTitle,
-          body: sanitizedBody,
-          icon: iconDataUrl,
-          tag: options.tag || null,
-          url: window.location.href
-        }
-      }, '*');
+    window.postMessage({
+      type: 'NOTIFICATION_SANITIZER_CREATE',
+      payload: {
+        title: sanitizedTitle,
+        body: sanitizedBody,
+        icon: iconUrl,
+        tag: options.tag || null,
+        url: window.location.href
+      }
+    }, '*');
 
-      // Simulate the 'show' event after the notification is sent
+    // Simulate the 'show' event
+    setTimeout(() => {
       if (fakeNotification.onshow) fakeNotification.onshow();
-    })();
+    }, 0);
 
     return fakeNotification;
   }

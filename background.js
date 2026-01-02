@@ -9,6 +9,40 @@
 const notificationTabMap = new Map();
 
 /**
+ * Convert an image URL to a base64 data URL
+ * This runs in the service worker context which can bypass CORS
+ * thanks to the <all_urls> host permission
+ */
+async function iconToDataUrl(iconUrl) {
+  if (!iconUrl) return null;
+
+  // If it's already a data URL, return as-is
+  if (iconUrl.startsWith('data:')) {
+    return iconUrl;
+  }
+
+  try {
+    const response = await fetch(iconUrl);
+    if (!response.ok) {
+      console.debug('[Notification Sanitizer] Failed to fetch icon:', response.status);
+      return null;
+    }
+
+    const blob = await response.blob();
+
+    // Convert blob to base64 using arrayBuffer
+    const arrayBuffer = await blob.arrayBuffer();
+    const base64 = btoa(
+      new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+    );
+    return `data:${blob.type || 'image/png'};base64,${base64}`;
+  } catch (err) {
+    console.debug('[Notification Sanitizer] Error converting icon:', err);
+    return null;
+  }
+}
+
+/**
  * Generate a unique notification ID
  */
 function generateNotificationId() {
@@ -46,12 +80,15 @@ async function handleCreateNotification(message, sender) {
     });
   }
 
+  // Convert icon URL to data URL (bypasses CORS in service worker context)
+  const iconDataUrl = await iconToDataUrl(icon);
+
   // Create notification options
   const options = {
     type: 'basic',
     title: title || 'Notification',
     message: body || '',
-    iconUrl: icon || chrome.runtime.getURL('icons/icon128.png'),
+    iconUrl: iconDataUrl || chrome.runtime.getURL('icons/icon128.png'),
     priority: 0
   };
 
