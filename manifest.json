@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Notification Sanitizer",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Strips HTML tags from web notifications for cleaner display in system notification daemons like dunst",
   "permissions": [
     "notifications",
